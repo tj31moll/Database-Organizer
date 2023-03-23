@@ -2,6 +2,8 @@ from flask import Flask, request, render_template
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.cluster import KMeans
 import onenote
+import requests
+from bs4 import BeautifulSoup
 import sqlite3
 import os
 
@@ -28,6 +30,12 @@ def upload():
 
     # Process text using AI/ML algorithms
     # Organize content into categories
+    if text.decode('utf-8').startswith('http'):
+        # If text is a website URL, parse the website
+        website_url = text.decode('utf-8')
+        response = requests.get(website_url)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        text = soup.get_text()
     vectorizer = TfidfVectorizer(stop_words='english')
     X = vectorizer.fit_transform([text.decode('utf-8')])
     kmeans = KMeans(n_clusters=3, random_state=0).fit(X)
