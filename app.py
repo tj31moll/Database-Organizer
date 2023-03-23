@@ -64,5 +64,35 @@ def upload():
 
     return 'File uploaded successfully!'
 
+from flask import Flask, render_template, request
+import pandas as pd
+import sqlite3
+
+app = Flask(__name__)
+
+@app.route('/view_db')
+def view_db():
+    conn = sqlite3.connect('data.db')
+    df = pd.read_sql_query('SELECT * FROM data', conn)
+    conn.close()
+    return render_template('view_db.html', table=df.to_html(index=False))
+
+ from flask import Flask, render_template, request
+import pandas as pd
+import sqlite3
+
+app = Flask(__name__)
+
+@app.route('/upload_csv', methods=['GET', 'POST'])
+def upload_csv():
+    if request.method == 'POST':
+        file = request.files['file']
+        df = pd.read_csv(file)
+        conn = sqlite3.connect('data.db')
+        df.to_sql(name='data', con=conn)
+        conn.close()
+        return 'File uploaded successfully and converted to SQL database!'
+    return render_template('upload_csv.html')
+  
 if __name__ == '__main__':
     app.run(debug=True)
