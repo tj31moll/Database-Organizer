@@ -2,9 +2,40 @@
 <html>
 <head>
 	<title>View Database</title>
+	<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css">
 </head>
 <body>
-	<h1>Database Table</h1>
-	{{ table|safe }}
+	<div class="container">
+		<h1>Database Table</h1>
+		<form method="POST">
+			<table class="table table-bordered table-hover">
+				<thead>
+					<tr>
+						{% for column in table.columns %}
+						<th>{{ column }}</th>
+						{% endfor %}
+					</tr>
+				</thead>
+				<tbody>
+					{% for index, row in table.iterrows() %}
+					<tr>
+						{% for column in table.columns %}
+						{% if column == 'index' %}
+						<input type="hidden" name="row_id" value="{{ row[column] }}">
+						{% else %}
+						<td>
+							<input type="text" name="{{ column }}" value="{{ row[column] }}">
+						</td>
+						{% endif %}
+						{% endfor %}
+						<td>
+							<button type="submit" class="btn btn-primary">Save</button>
+						</td>
+					</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		</form>
+	</div>
 </body>
 </html>
