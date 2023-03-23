@@ -42,17 +42,17 @@ def upload():
     conn.close()
 
     # Upload to OneNote
-    client_id = os.environ.get('ONENOTE_CLIENT_ID')
-    client_secret = os.environ.get('ONENOTE_CLIENT_SECRET')
-    tenant_id = os.environ.get('ONENOTE_TENANT_ID')
+    client_id = 'YOUR_CLIENT_ID'
+    client_secret = 'YOUR_CLIENT_SECRET'
+    tenant_id = 'YOUR_TENANT_ID'
     onenote_client = onenote.OneNote(client_id, client_secret, tenant_id)
-    notebook_id = os.environ.get('ONENOTE_NOTEBOOK_ID')
-    section_id = os.environ.get(f'ONENOTE_SECTION_ID_{category}')
+    notebook_id = 'YOUR_NOTEBOOK_ID'
+    section_ids = ['SECTION_ID_0', 'SECTION_ID_1', 'SECTION_ID_2']
 
     # Create a new page in the specified section
     page_title = file.filename
     page_content = f'<html><body><p>{text.decode("utf-8")}</p></body></html>'
-    onenote_client.create_page(page_title, page_content, notebook_id, section_id)
+    onenote_client.create_page(page_title, page_content, notebook_id, section_ids[category])
 
     return 'File uploaded successfully!'
 
