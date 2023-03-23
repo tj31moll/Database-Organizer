@@ -1,14 +1,19 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-	<title>Document Organizer</title>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Text or File</title>
 </head>
 <body>
-	<h1>Upload a Document or Text</h1>
-	<form method="POST" action="/upload" enctype="multipart/form-data">
-		<label for="file">Select a file:</label>
-		<input type="file" name="file" id="file"><br><br>
-		<input type="submit" value="Submit">
-	</form>
+    <h1>Upload Text or File</h1>
+    <form action="/upload" method="post" enctype="multipart/form-data">
+        <label for="text">Paste text here:</label><br>
+        <textarea id="text" name="text" rows="4" cols="50"></textarea><br>
+        <label for="file">Or, upload a file:</label><br>
+        <input type="file" id="file" name="file"><br>
+        <input type="submit" value="Upload">
+    </form>
 </body>
 </html>

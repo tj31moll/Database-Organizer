@@ -1,13 +1,19 @@
-from flask import Flask, request, render_template
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.cluster import KMeans
-import onenote
+import pandas as pd
+from flask import Flask, render_template, request
+from flask import Flask, request, render_template, redirect
 import requests
 from bs4 import BeautifulSoup
 import sqlite3
 import os
+from transformers import pipeline
+from microsoftgraph.client import Client
+from msal import ConfidentialClientApplication
 
 app = Flask(__name__)
+
+# Load the pre-trained model
+classifier = pipeline("zero-shot-classification",
+                      model="facebook/bart-large-mnli")
 
 # Create a new SQLite database
 conn = sqlite3.connect('documents.db')
@@ -19,27 +25,37 @@ c.execute('''CREATE TABLE IF NOT EXISTS documents
 conn.commit()
 conn.close()
 
+
 @app.route('/')
 def home():
     return render_template('index.html')
 
+
 @app.route('/upload', methods=['POST'])
 def upload():
-    file = request.files['file']
-    text = file.read()
+    text = request.form.get('text')
+    file = request.files.get('file')
 
-    # Process text using AI/ML algorithms
-    # Organize content into categories
-    if text.decode('utf-8').startswith('http'):
+    if file and file.filename:
+        text = file.read().decode('utf-8')
+    elif not text:
+        return 'No text or file provided. Please go back and provide text or upload a file.'
+
+    # Process text using zero-shot classification
+    if text.startswith('http'):
         # If text is a website URL, parse the website
-        website_url = text.decode('utf-8')
+        website_url = text
         response = requests.get(website_url)
         soup = BeautifulSoup(response.content, 'html.parser')
         text = soup.get_text()
-    vectorizer = TfidfVectorizer(stop_words='english')
-    X = vectorizer.fit_transform([text.decode('utf-8')])
-    kmeans = KMeans(n_clusters=3, random_state=0).fit(X)
-    category = kmeans.predict(X)[0]
+
+    # Define your categories here
+    categories = ["technology", "sports",
+                  "politics", "finance", "entertainment"]
+
+    # Organize content into categories
+    result = classifier(text, categories)
+    category = result["labels"][0]
 
     # Store results in the database
     conn = sqlite3.connect('documents.db')
@@ -50,23 +66,37 @@ def upload():
     conn.close()
 
     # Upload to OneNote
-    client_id = 'YOUR_CLIENT_ID'
-    client_secret = 'YOUR_CLIENT_SECRET'
-    tenant_id = 'YOUR_TENANT_ID'
-    onenote_client = onenote.OneNote(client_id, client_secret, tenant_id)
+    client_id = 'cd6'
+    client_secret = '_CgcwC'
+    tenant_id = 'b2578'
+    authority = f'https://login.microsoftonline.com/{tenant_id}'
+    scope = ['https://graph.microsoft.com/.default']
+
+    app = ConfidentialClientApplication(client_id, client_secret, authority)
+    result = app.acquire_token_for_client(scope)
+    if "access_token" in result:
+        access_token = result['access_token']
+    else:
+        print(result.get("error"))
+        print(result.get("error_description"))
+        print(result.get("correlation_id"))
+
+    headers = {'Authorization': f'Bearer {access_token}'}
     notebook_id = 'YOUR_NOTEBOOK_ID'
     section_ids = ['SECTION_ID_0', 'SECTION_ID_1', 'SECTION_ID_2']
 
     # Create a new page in the specified section
-    page_title = file.filename
-    page_content = f'<html><body><p>{text.decode("utf-8")}</p></body></html>'
-    onenote_client.create_page(page_title, page_content, notebook_id, section_ids[category])
+    page_title = file.filename if file else "text_input"
+    page_content = f'<html><head><title>{page_title}</title></head><body><p>{text}</p></body></html>'
+    url = f'https://graph.microsoft.com/v1.0/me/onenote/notebooks/{notebook_id}/sections/{section_ids[category]}/pages'
+    response = requests.post(url, headers={
+                             'Authorization': f'Bearer {access_token}', 'Content-Type': 'application/xhtml+xml'}, data=page_content)
 
     return 'File uploaded successfully!'
 
-from flask import Flask, render_template, request
-import pandas as pd
-import sqlite3
+
+# The rest of the code remains the same
+
 
 @app.route('/view_db', methods=['GET', 'POST'])
 def view_db():
@@ -85,7 +115,8 @@ def view_db():
         # Update the database with the new values
         conn = sqlite3.connect('data.db')
         cursor = conn.cursor()
-        cursor.execute(f"UPDATE data SET {','.join([f'{key} = ?' for key in new_values.keys()])} WHERE index = ?", tuple(new_values.values()) + (row_id,))
+        cursor.execute(f"UPDATE data SET {','.join([f'{key} = ?' for key in new_values.keys()])} WHERE index = ?", tuple(
+            new_values.values()) + (row_id,))
         conn.commit()
         conn.close()
 
@@ -93,10 +124,6 @@ def view_db():
 
     return render_template('view_db.html', table=df.to_html(index=False, classes='table table-bordered table-hover'))
 
-
-from flask import Flask, render_template, request
-import pandas as pd
-import sqlite3
 
 @app.route('/upload_csv', methods=['GET', 'POST'])
 def upload_csv():
@@ -108,6 +135,7 @@ def upload_csv():
         conn.close()
         return 'File uploaded successfully and converted to SQL database!'
     return render_template('upload_csv.html')
-  
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=3636, debug=True)
