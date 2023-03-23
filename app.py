@@ -68,20 +68,35 @@ from flask import Flask, render_template, request
 import pandas as pd
 import sqlite3
 
-app = Flask(__name__)
-
-@app.route('/view_db')
+@app.route('/view_db', methods=['GET', 'POST'])
 def view_db():
     conn = sqlite3.connect('data.db')
     df = pd.read_sql_query('SELECT * FROM data', conn)
     conn.close()
-    return render_template('view_db.html', table=df.to_html(index=False))
 
- from flask import Flask, render_template, request
+    if request.method == 'POST':
+        # Get the edited row values
+        row_id = request.form['row_id']
+        new_values = {}
+        for key in request.form.keys():
+            if key != 'row_id':
+                new_values[key] = request.form[key]
+
+        # Update the database with the new values
+        conn = sqlite3.connect('data.db')
+        cursor = conn.cursor()
+        cursor.execute(f"UPDATE data SET {','.join([f'{key} = ?' for key in new_values.keys()])} WHERE index = ?", tuple(new_values.values()) + (row_id,))
+        conn.commit()
+        conn.close()
+
+        return redirect('/view_db')
+
+    return render_template('view_db.html', table=df.to_html(index=False, classes='table table-bordered table-hover'))
+
+
+from flask import Flask, render_template, request
 import pandas as pd
 import sqlite3
-
-app = Flask(__name__)
 
 @app.route('/upload_csv', methods=['GET', 'POST'])
 def upload_csv():
@@ -95,4 +110,4 @@ def upload_csv():
     return render_template('upload_csv.html')
   
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=3636, debug=True)
